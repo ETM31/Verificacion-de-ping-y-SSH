@@ -2,15 +2,23 @@ import os
 import platform
 import pandas as pd
 import paramiko
+import time
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # --- CONFIGURACIÓN ---
 EXCEL_ENTRADA = "CEDIS Obregón Inventario WAN-LAN-WLAN.xlsx"  # Cambia esto por el nombre exacto de tu archivo
 EXCEL_SALIDA = "reporte_switches.xlsx"
-TIMEOUT_SSH = 50  # Segundos de espera para el SSH antes de darlo por muerto
+TIMEOUT_SSH = 20  # Segundos de espera para el SSH antes de darlo por muerto
 
 # Credenciales temporales para la prueba de acceso SSH
-SSH_USER = "soporte"
-SSH_PASSWORD = "H0u$toN210206"
+SSH_USER = os.getenv("SSH_USER")
+SSH_PASSWORD = os.getenv("SSH_PASSWORD")
+
+if not SSH_PASSWORD or not SSH_USER:
+    print("ALERTA!!!!!!!! No se pudieron leer las credenciales del archivo .env")
+    exit()
 
 
 def verificar_ping(ip):
@@ -30,12 +38,12 @@ def verificar_ssh(ip, user, password):
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
         # Intentamos conectar. Si conecta bien, el puerto está abierto.
-        ssh.connect(ip, username=user, password=password, timeout=TIMEOUT_SSH)
+        ssh.connect(ip, username=user, password=password, timeout=TIMEOUT_SSH, look_for_keys=False, allow_agent=False)
         ssh.close()
         return "ACCESO OK"
     except paramiko.AuthenticationException:
         # Si el switch responde pero rechaza la contraseña, ¡el SSH está activo y accesible!
-        return "SSH ACTIVO (Error Auth)"
+        return "SSH ACTIVO credenciales erroneas"
     except Exception:
         # Si da timeout, conexión rechazada o red inalcanzable
         return "SIN ACCESO SSH o TIMEOUT ALCANZADO"
@@ -44,29 +52,31 @@ def verificar_ssh(ip, user, password):
 def main():
     print("Cargando archivo de Excel...")
     try:
-        df = pd.read_excel(EXCEL_ENTRADA)
+        df = pd.read_excel(EXCEL_ENTRADA) #el archivo de excel está en la variable 'df'
     except FileNotFoundError:
         print(f"Error: No se encontró el archivo '{EXCEL_ENTRADA}' en esta carpeta.")
         return
 
     # Verificar que exista la columna llamada IP
     if "Direccion IP" not in df.columns:
-        print("Error: Tu Excel debe tener una columna llamada exactamente 'Direccion IP'.")
+        print("Error: Tu Excel debe tener una columna llamada exactamente 'Direccion IP' o esto explota :D.")
         return
 
     resultados_ping = []
     resultados_ssh = []
 
-    total_switches = len(df)
+    total_switches = len(df) # calculamos el tamaño del archivo
     print(f"Iniciando escaneo de {total_switches} dispositivos...")
 
-    for index, fila in df.iterrows():
+    for index, fila in df.iterrows():      
         ip = str(fila["Direccion IP"]).strip()
         print(f"[{index + 1}/{total_switches}] Evaluando {ip}...", end="", flush=True)
-
+        
         # 1. Probar Ping
         estado_ping = verificar_ping(ip)
         resultados_ping.append(estado_ping)
+
+        time.sleep(1) # Lo ponemos a domrir un ratito al programa que sino se satura todo
 
         # 2. Probar SSH (solo si el ping respondió, para no perder tiempo esperando timeouts futiles)
         if estado_ping == "OK":
