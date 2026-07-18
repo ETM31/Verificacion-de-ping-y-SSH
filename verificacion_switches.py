@@ -5,12 +5,13 @@ import paramiko
 import time
 from dotenv import load_dotenv
 
+# Traigno el archivo con las credenciales
 load_dotenv()
 
 # --- CONFIGURACIÓN ---
-EXCEL_ENTRADA = "CEDIS Obregón Inventario WAN-LAN-WLAN.xlsx"  # Cambia esto por el nombre exacto de tu archivo
+EXCEL_ENTRADA = "PT Santa Ana.xlsx"  # Archivo con inventario
 EXCEL_SALIDA = "reporte_switches.xlsx"
-TIMEOUT_SSH = 20  # Segundos de espera para el SSH antes de darlo por muerto
+TIMEOUT_SSH = 25  # Segundos de espera para el SSH antes de darlo por muerto
 
 # Credenciales temporales para la prueba de acceso SSH
 SSH_USER = os.getenv("SSH_USER")
@@ -38,7 +39,14 @@ def verificar_ssh(ip, user, password):
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
         # Intentamos conectar. Si conecta bien, el puerto está abierto.
-        ssh.connect(ip, username=user, password=password, timeout=TIMEOUT_SSH, look_for_keys=False, allow_agent=False)
+        ssh.connect(
+            ip, 
+            username=user, 
+            password=password, 
+            timeout=TIMEOUT_SSH, 
+            look_for_keys=False, 
+            allow_agent=False,
+            )
         ssh.close()
         return "ACCESO OK"
     except paramiko.AuthenticationException:
@@ -68,7 +76,7 @@ def main():
     total_switches = len(df) # calculamos el tamaño del archivo
     print(f"Iniciando escaneo de {total_switches} dispositivos...")
 
-    for index, fila in df.iterrows():      
+    for index, fila in df.iterrows():   
         ip = str(fila["Direccion IP"]).strip()
         print(f"[{index + 1}/{total_switches}] Evaluando {ip}...", end="", flush=True)
         
