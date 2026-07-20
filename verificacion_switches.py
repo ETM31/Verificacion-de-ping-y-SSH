@@ -9,8 +9,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- CONFIGURACIÓN ---
-EXCEL_ENTRADA = "PT Santa Ana.xlsx"  # Archivo con inventario
-EXCEL_SALIDA = "reporte_switches.xlsx"
+nombre_archivo = str(input("Introduce el nombre de tu archivo "))
+EXCEL_ENTRADA = nombre_archivo + ".xlsx"  # Archivo con el inventario en excel
+EXCEL_SALIDA = f"reporte_dispositivos_{nombre_archivo}.xlsx"
 TIMEOUT_SSH = 25  # Segundos de espera para el SSH antes de darlo por muerto
 
 # Credenciales temporales para la prueba de acceso SSH
