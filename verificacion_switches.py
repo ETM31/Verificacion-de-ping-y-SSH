@@ -3,6 +3,7 @@ import platform
 import pandas as pd
 import paramiko
 import time
+import unicodedata
 from dotenv import load_dotenv
 
 # Traigno el archivo con las credenciales
@@ -10,8 +11,8 @@ load_dotenv()
 
 # --- CONFIGURACIÓN ---
 nombre_archivo = str(input("Introduce el nombre de tu archivo "))
-EXCEL_ENTRADA = nombre_archivo + ".xlsx"  # Archivo con el inventario en excel
-EXCEL_SALIDA = f"reporte_dispositivos_{nombre_archivo}.xlsx"
+EXCEL_ENTRADA = f"Inventarios/{nombre_archivo}.xlsx"  # Archivo con el inventario en excel
+EXCEL_SALIDA = f"Reportes/reporte_dispositivos_{nombre_archivo}.xlsx"
 TIMEOUT_SSH = 25  # Segundos de espera para el SSH antes de darlo por muerto
 
 # Credenciales temporales para la prueba de acceso SSH
@@ -57,6 +58,18 @@ def verificar_ssh(ip, user, password):
         # Si da timeout, conexión rechazada o red inalcanzable
         return "SIN ACCESO SSH o TIMEOUT ALCANZADO"
 
+def limpiar_texto(texto):
+    # Limpiar espacios en blanco en columna
+    if pd.isna(texto):
+        return ""
+
+    # Minusculas y adios espacios
+    texto = str(texto).strip().lower()
+
+    # Normaliza a NFD y descarta los caracteres de la categoría 'Mn' (Nonspacing Mark)
+    nfkd_form = unicodedata.normalize('NFKD', texto)
+    return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+
 
 def main():
     print("Cargando archivo de Excel...")
@@ -65,9 +78,12 @@ def main():
     except FileNotFoundError:
         print(f"Error: No se encontró el archivo '{EXCEL_ENTRADA}' en esta carpeta.")
         return
+    
+    # Limpiar acentuación y mayúsculas en la columna del excel
+    df.columns = [limpiar_texto(col) for col in df.columns]
 
     # Verificar que exista la columna llamada IP
-    if "Direccion IP" not in df.columns:
+    if "direccion ip" not in df.columns:
         print("Error: Tu Excel debe tener una columna llamada exactamente 'Direccion IP' o esto explota :D.")
         return
 
@@ -78,7 +94,7 @@ def main():
     print(f"Iniciando escaneo de {total_switches} dispositivos...")
 
     for index, fila in df.iterrows():   
-        ip = str(fila["Direccion IP"]).strip()
+        ip = str(fila["direccion ip"]).strip()
         print(f"[{index + 1}/{total_switches}] Evaluando {ip}...", end="", flush=True)
         
         # 1. Probar Ping
